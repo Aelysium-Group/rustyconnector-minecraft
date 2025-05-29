@@ -117,7 +117,7 @@
 # 🤔 Returning Features
 The v0.9.0 rewrite has removed many "extra" features in previous versions.
 These features are being incrementally released as external modules you can install if you need them.
-- ### 🔳 Whitelist
+- ### [✅ Whitelist](https://github.com/Aelysium-Group/rcm-whitelists)
 - ### 🔳 Static Family
 - ### 🔳 Anchors/Hub
 - ### 🔳 Player Registry (If a haze provider exists, we can persist player data to the database.)

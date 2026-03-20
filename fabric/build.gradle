@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.11-SNAPSHOT'
+    id 'fabric-loom' version '1.15-SNAPSHOT'
 }
 base {
     archivesName = "rustyconnector-fabric"
@@ -44,7 +44,7 @@ dependencies {
     include implementation("org.incendo:cloud-annotations:2.0.0")
 
     // Kyori Components
-    include(implementation("net.kyori:adventure-key:4.24.0-SNAPSHOT"))
+    include(implementation("net.kyori:adventure-key:4.24.0"))
     include(implementation("net.kyori:examination-api:1.3.0"))
     include(implementation("net.kyori:adventure-api:4.24.0"))
     include(implementation("net.kyori:adventure-text-serializer-legacy:4.24.0"))

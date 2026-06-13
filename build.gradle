@@ -9,7 +9,8 @@ buildscript {
 }
 
 allprojects {
-    repositories { 
+    repositories {
+        mavenLocal()
         mavenCentral()
         maven { url = "https://repo.maven.apache.org/maven2/" }
         maven { url = "https://repo.papermc.io/repository/maven-public/" }

@@ -26,6 +26,7 @@
               jdk21
               gradle
               maven
+              just
             ];
             JAVA_HOME = pkgs.jdk21.home;
           };

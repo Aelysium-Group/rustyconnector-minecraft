@@ -1,0 +1,9 @@
+# Runtime server data (worlds, generated RC configs, downloaded server jars)
+data/
+
+# Staged plugin/mod jars (copied from each module's build/libs by `harness stage`)
+jars/
+
+# Bot dependencies
+bot/node_modules/
+bot/package-lock.json

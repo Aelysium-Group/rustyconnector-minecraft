@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# RustyConnector integration-test harness.
+#
+#   stage   copy freshly-built jars into ./jars (run after a rebuild)
+#   up      stage, boot the cluster, wire it, verify registration
+#   down    stop and wipe the cluster
+#   wire    (re)apply wiring (idempotent), restart backends, verify
+#   verify  check both backends registered into the lobby family
+#   bot     run a bot scenario:  bot <connect|fallback|transfer>
+#   test    run the bot scenarios
+#   logs    follow cluster logs
+set -uo pipefail
+cd "$(dirname "$0")" || exit 1
+DC="docker compose"
+NET="rc-harness_rcnet"
+say() { printf '\033[36m[harness]\033[0m %s\n' "$*"; }
+
+wait_healthy() {
+  say "waiting for all containers healthy…"
+  for _ in $(seq 1 80); do
+    [ "$($DC ps --format '{{.Health}}' 2>/dev/null | grep -c '^healthy$')" -ge 3 ] && { say "cluster healthy"; return 0; }
+    sleep 3
+  done
+  say "TIMEOUT waiting for health"; $DC ps; return 1
+}
+
+# Copy freshly-built jars into ./jars under stable names. Containers chown their
+# mounts (userns remap), so they must never point at the Gradle build tree.
+stage() {
+  mkdir -p jars
+  local m f src staged=""
+  for m in velocity paper fabric; do
+    src=""
+    for f in "../$m/build/libs/rustyconnector-$m-"*.jar; do
+      case "$f" in *-sources.jar|*-dev.jar|*-javadoc.jar) continue ;; esac
+      [ -e "$f" ] || continue            # glob stayed literal -> no match
+      src="$f"; break
+    done
+    [ -n "$src" ] || { say "missing $m jar — run 'just build' first"; return 1; }
+    rm -f "jars/$m.jar"                  # rm (dir-owned) succeeds even if the old copy is container-owned
+    cp "$src" "jars/$m.jar"
+    staged="$staged $m.jar"
+  done
+  say "staged:$staged"
+}
+
+wire() {
+  say "wiring: modern forwarding + shared aes + magic-link bind + RC-only routing"
+  local SECRET AES
+  SECRET=$($DC exec -T velocity cat /server/forwarding.secret)
+  AES=$($DC exec -T velocity cat /server/plugins/rustyconnector/metadata/aes.private)
+
+  # Velocity: enable modern forwarding; strip itzg's predefined [servers] so RC owns routing.
+  $DC exec -T velocity sh -c '
+    sed -i "s/^player-info-forwarding-mode.*/player-info-forwarding-mode = \"modern\"/" /server/velocity.toml
+    sed -i "s/^online-mode.*/online-mode = false/" /server/velocity.toml
+    sed -i "/^\[servers\]/,/^\[advanced\]/ { /^\[advanced\]/!d }" /server/velocity.toml
+  '
+  # Magic Link must bind all interfaces to be reachable cross-container.
+  $DC exec -T velocity sed -i "s#127.0.0.1:8080#0.0.0.0:8080#" /server/plugins/rustyconnector/magic_link.yml
+
+  # Paper: shared aes + velocity forwarding (Paper backfills the rest of paper-global.yml).
+  printf '%s' "$AES" | $DC exec -T paper sh -c 'mkdir -p /data/plugins/rustyconnector/metadata && cat > /data/plugins/rustyconnector/metadata/aes.private'
+  $DC exec -T paper sh -c 'mkdir -p /data/config && cat > /data/config/paper-global.yml' <<YML
+proxies:
+  velocity:
+    enabled: true
+    online-mode: false
+    secret: $SECRET
+YML
+
+  # Fabric: shared aes + FabricProxy-Lite (downloaded at runtime via MODRINTH_PROJECTS).
+  printf '%s' "$AES" | $DC exec -T fabric sh -c 'mkdir -p /data/mods/rustyconnector/metadata && cat > /data/mods/rustyconnector/metadata/aes.private'
+  $DC exec -T fabric sh -c 'mkdir -p /data/config && cat > /data/config/FabricProxy-Lite.toml' <<TOML
+hackOnlineMode = true
+hackMessageChain = true
+secret = "$SECRET"
+TOML
+
+  say "restarting all nodes to apply wiring…"
+  $DC restart velocity paper fabric >/dev/null
+}
+
+verify() {
+  say "verifying both backends registered into 'lobby'…"
+  for _ in $(seq 1 40); do
+    if [ "$($DC logs velocity 2>&1 | grep -cE '\] -> lobby')" -ge 2 ]; then
+      say "registered:"; $DC logs velocity 2>&1 | grep -E '\] -> lobby' | tail -2; return 0
+    fi
+    sleep 3
+  done
+  say "registration NOT confirmed; recent velocity log:"; $DC logs velocity 2>&1 | tail -15; return 1
+}
+
+# Run the mineflayer bot (in a node container on the cluster network) for a scenario.
+bot() {
+  local scenario="${1:-connect}"
+  say "bot scenario '$scenario' (-> velocity:25577 on $NET)"
+  docker run --rm --network "$NET" \
+    -e HOST=velocity -e PORT=25577 -e SCENARIO="$scenario" \
+    -v "$PWD/bot:/bot" -w /bot node:22-slim \
+    sh -c 'npm install --no-audit --no-fund --silent && node bot.js'
+}
+
+# Connect a bot, kill whichever backend it lands on, expect RC to fail it over (serverChange).
+fallback() {
+  local user="RCBotFall" log="/tmp/rc-bot-fallback.log"
+  say "fallback: connect, kill the bot's backend, expect serverChange"
+  docker run --rm --network "$NET" --name rc-bot-fallback \
+    -e HOST=velocity -e PORT=25577 -e SCENARIO=fallback -e USERNAME="$user" \
+    -v "$PWD/bot:/bot" -w /bot node:22-slim \
+    sh -c 'npm install --no-audit --no-fund --silent && node bot.js' >"$log" 2>&1 &
+  local pid=$!
+  local backend=""
+  for _ in $(seq 1 40); do
+    if grep -qE '"event":"(login|spawn)"' "$log" 2>/dev/null; then
+      docker compose logs paper  2>&1 | grep -q "$user" && { backend=paper;  break; }
+      docker compose logs fabric 2>&1 | grep -q "$user" && { backend=fabric; break; }
+    fi
+    sleep 2
+  done
+  if [ -z "$backend" ]; then say "bot never landed on a backend:"; cat "$log"; kill $pid 2>/dev/null; return 1; fi
+  say "bot landed on '$backend' — stopping it gracefully (SIGTERM)"
+  $DC stop "$backend" >/dev/null
+  wait $pid 2>/dev/null
+  $DC start "$backend" >/dev/null 2>&1 || true   # restore the backend for re-runs
+  if grep -q '"event":"serverChange"' "$log"; then
+    say "FALLBACK OK — bot failed over:"; grep -E '"event":"(serverChange|kicked|end)"' "$log"; return 0
+  fi
+  say "NO fallback observed — bot events:"; grep '"event"' "$log" | tail; return 1
+}
+
+case "${1:-}" in
+  stage)    stage ;;
+  up)       stage && $DC up -d && wait_healthy && wire && wait_healthy && verify ;;
+  down)     $DC down -v ;;
+  wire)     wire && wait_healthy && verify ;;
+  verify)   verify ;;
+  bot)      bot "${2:-connect}" ;;
+  fallback) fallback ;;
+  test)     bot connect && fallback ;;
+  logs)     $DC logs -f ;;
+  *)        echo "usage: $0 {stage|up|down|wire|verify|bot <name>|fallback|test|logs}"; exit 1 ;;
+esac

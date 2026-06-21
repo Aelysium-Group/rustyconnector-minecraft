@@ -1,0 +1,14 @@
+{
+  "name": "rc-test-bot",
+  "version": "1.0.0",
+  "description": "Mineflayer integration-test bot for RustyConnector",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "mineflayer": "4.37.1",
+    "minecraft-protocol": "1.66.2"
+  },
+  "license": "MIT"
+}

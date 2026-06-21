@@ -128,3 +128,8 @@ bin/
 # Remove Ignore List
 
 !/plugin/gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# direnv (local)
+.envrc
+.direnv/

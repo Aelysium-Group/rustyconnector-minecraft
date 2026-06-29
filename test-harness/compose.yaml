@@ -48,5 +48,18 @@ services:
     networks: [rcnet]
     restart: "no"
 
+  # Integration-test bot (mineflayer). Profile-gated so it never starts with a
+  # plain `up`; the harness runs it on demand via `docker compose run bot`, which
+  # attaches it to rcnet by membership. HOST/PORT target Velocity's in-container
+  # listener.
+  bot:
+    build: ./bot
+    profiles: [bot]
+    environment:
+      HOST: velocity
+      PORT: "25577"
+    networks: [rcnet]
+    restart: "no"
+
 networks:
   rcnet: {}

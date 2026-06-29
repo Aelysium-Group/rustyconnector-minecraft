@@ -24,7 +24,9 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               jdk21
-              gradle
+              # Gradle 9 to match the project's wrapper (9.6.0); Loom 1.17 requires
+              # Gradle 9.
+              gradle_9
               maven
               just
             ];

@@ -12,7 +12,6 @@
 set -uo pipefail
 cd "$(dirname "$0")" || exit 1
 DC="docker compose"
-NET="rc-harness_rcnet"
 say() { printf '\033[36m[harness]\033[0m %s\n' "$*"; }
 
 wait_healthy() {
@@ -92,30 +91,31 @@ verify() {
   say "registration NOT confirmed; recent velocity log:"; $DC logs velocity 2>&1 | tail -15; return 1
 }
 
-# Run the mineflayer bot (in a node container on the cluster network) for a scenario.
+# Run the mineflayer bot for a scenario. `compose run` builds the bot image
+# (npm ci from the committed lockfile) and attaches the container to rcnet by
+# membership; the network is created if absent.
 bot() {
   local scenario="${1:-connect}"
-  say "bot scenario '$scenario' (-> velocity:25577 on $NET)"
-  docker run --rm --network "$NET" \
-    -e HOST=velocity -e PORT=25577 -e SCENARIO="$scenario" \
-    -v "$PWD/bot:/bot" -w /bot node:22-slim \
-    sh -c 'npm install --no-audit --no-fund --silent && node bot.js'
+  say "bot scenario '$scenario' (-> velocity:25577 on rcnet)"
+  $DC run --build --rm -e SCENARIO="$scenario" bot
 }
 
 # Connect a bot, kill whichever backend it lands on, expect RC to fail it over (serverChange).
 fallback() {
   local user="RCBotFall" log="/tmp/rc-bot-fallback.log"
   say "fallback: connect, kill the bot's backend, expect serverChange"
-  docker run --rm --network "$NET" --name rc-bot-fallback \
-    -e HOST=velocity -e PORT=25577 -e SCENARIO=fallback -e USERNAME="$user" \
-    -v "$PWD/bot:/bot" -w /bot node:22-slim \
-    sh -c 'npm install --no-audit --no-fund --silent && node bot.js' >"$log" 2>&1 &
+  # No --name: a backgrounded `compose run` orphaned by Ctrl+C would block the
+  # next run on a container-name conflict. Process control is via $pid; the bot
+  # is found in the backend logs by $user.
+  $DC run --build --rm \
+    -e SCENARIO=fallback -e USERNAME="$user" \
+    bot >"$log" 2>&1 &
   local pid=$!
   local backend=""
   for _ in $(seq 1 40); do
-    if grep -qE '"event":"(login|spawn)"' "$log" 2>/dev/null; then
-      docker compose logs paper  2>&1 | grep -q "$user" && { backend=paper;  break; }
-      docker compose logs fabric 2>&1 | grep -q "$user" && { backend=fabric; break; }
+    if grep -qE '"event":"login"' "$log" 2>/dev/null; then
+      $DC logs paper  2>&1 | grep -q "$user" && { backend=paper;  break; }
+      $DC logs fabric 2>&1 | grep -q "$user" && { backend=fabric; break; }
     fi
     sleep 2
   done
@@ -136,9 +136,9 @@ case "${1:-}" in
   down)     $DC down -v ;;
   wire)     wire && wait_healthy && verify ;;
   verify)   verify ;;
-  bot)      bot "${2:-connect}" ;;
+  bot)      bot "${2:-connect}" ;;   # bare 'harness bot' -> connect ('just bot' defaults to fallback)
   fallback) fallback ;;
   test)     bot connect && fallback ;;
   logs)     $DC logs -f ;;
-  *)        echo "usage: $0 {stage|up|down|wire|verify|bot <name>|fallback|test|logs}"; exit 1 ;;
+  *)        echo "usage: $0 {stage|up|down|wire|verify|bot [scenario]|fallback|test|logs}"; exit 1 ;;
 esac

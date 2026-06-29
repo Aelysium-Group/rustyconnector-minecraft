@@ -1,0 +1,3 @@
+# Never copy host-installed modules into the build context; `npm ci` regenerates
+# them deterministically from package-lock.json inside the image.
+node_modules

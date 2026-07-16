@@ -24,9 +24,10 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               jdk21
-              # Gradle 9 to match the project's wrapper (9.6.0); Loom 1.17 requires
-              # Gradle 9.
-              gradle_9
+              # NO gradle here on purpose: the wrapper (./gradlew) pins and
+              # self-provisions Gradle 9.6.0 (Loom 1.17 requires Gradle 9).
+              # nixpkgs' gradle_9 lags (9.4.1 at last check) — shipping a second,
+              # older Gradle in the shell is a drift trap, not a convenience.
               maven
               just
             ];

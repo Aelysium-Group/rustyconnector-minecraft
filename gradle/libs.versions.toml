@@ -39,6 +39,7 @@ adventure-api               = { module = "net.kyori:adventure-api", version.ref 
 adventure-key               = { module = "net.kyori:adventure-key", version.ref = "adventure" }
 adventure-serializer-legacy = { module = "net.kyori:adventure-text-serializer-legacy", version.ref = "adventure" }
 examination-api             = { module = "net.kyori:examination-api", version.ref = "examination" }
+examination-string          = { module = "net.kyori:examination-string", version.ref = "examination" }
 
 cloud-annotations           = { module = "org.incendo:cloud-annotations", version.ref = "cloud-annotations" }
 cloud-velocity              = { module = "org.incendo:cloud-velocity", version.ref = "cloud-velocity" }

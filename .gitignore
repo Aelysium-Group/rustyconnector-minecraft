@@ -1,5 +1,7 @@
 # User-specific stuff
 .*/
+# ... but .github is project infrastructure, not user-specific.
+!.github/
 
 *.iml
 *.ipr

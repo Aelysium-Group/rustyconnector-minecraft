@@ -8,6 +8,10 @@ services:
     image: itzg/mc-proxy
     environment:
       TYPE: VELOCITY
+      # Pin like the backends below: unpinned, the image pulls the latest
+      # Velocity snapshot at boot — 4.0.0-SNAPSHOT needs Java 25, the image
+      # runtime is 21, and the proxy crash-loops with UnsupportedClassVersionError.
+      VELOCITY_VERSION: "3.5.0-SNAPSHOT"
       MEMORY: 1G
     ports:
       - "25565:25577"

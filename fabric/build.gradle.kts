@@ -33,6 +33,8 @@ dependencies {
     "include"(libs.adventure.serializer.legacy)
     "implementation"(libs.examination.api)
     "include"(libs.examination.api)
+    "implementation"(libs.examination.string)
+    "include"(libs.examination.string)
 
     "implementation"(libs.configurate.core)
     "include"(libs.configurate.core)

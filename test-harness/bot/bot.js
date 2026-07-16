@@ -251,10 +251,24 @@ function runTransfer() {
       emit('error', { message: 'chat send failed: ' + String(err.message || err) })
     }
 
-    // Wait for a serverChange event or the timeout.
+    // RC answered the command -> the round-trip we're testing is complete.
+    // "already connected" is a valid outcome in a single-family cluster
+    // (there is nowhere else to route). A serverChange surfaces as a second
+    // 'spawn'; both settle the scenario — don't sit out the full timeout.
+    const settle = (why) => {
+      clearTimeout(mainTimer)
+      emit('end', { reason: `transfer settled: ${why}` })
+      shutdown('transfer settled', exitCode)
+    }
+    bot.on('message', (jsonMsg) => {
+      if (/already connected/i.test(jsonMsg.toString())) settle('RC replied already-connected')
+    })
+    bot.on('spawn', () => settle('serverChange (respawn) observed'))
+
+    // Neither response nor transfer -> timeout (command swallowed = failure signal).
     mainTimer = setTimeout(() => {
-      emit('end', { reason: 'transfer scenario timeout' })
-      shutdown('transfer timeout', exitCode)
+      emit('end', { reason: 'transfer scenario timeout (no RC response)' })
+      shutdown('transfer timeout', 1)
     }, WAIT_AFTER)
 
   }, SEND_DELAY)

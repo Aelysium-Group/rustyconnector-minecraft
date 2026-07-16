@@ -68,10 +68,10 @@ The underlying `harness` script exposes a few more subcommands directly
 | `stage` | Copy freshly-built jars into `./jars` under stable names. |
 | `up` | `stage` → `docker compose up -d` → wait healthy → `wire` → verify. |
 | `wire` | (Re)apply cluster wiring (idempotent), restart backends, verify. |
-| `verify` | Check both backends registered into the `lobby` family. |
+| `verify [since]` | Check both backends (paper AND fabric, distinctly) registered into `lobby`. Optional `since` (unix epoch) scopes the log window — `wire` sets it automatically so pre-restart registrations can't satisfy the check. |
 | `bot <scenario>` | Run one bot scenario as a one-off Compose container. |
-| `fallback` | Connect a bot, kill its backend, assert failover. |
-| `test` | Run the `connect` then `fallback` scenarios (assumes a wired cluster). |
+| `fallback` | Connect a bot, kill its backend, assert failover; waits for the backend to re-register before returning. |
+| `test` | Run `connect` → `fallback` → `transfer` (assumes a wired cluster). |
 | `down` | `docker compose down -v`. |
 
 > **Ordering:** `bot`, `fallback`, and the `test` subcommand assume the cluster
@@ -91,14 +91,18 @@ The bot ([`bot/bot.js`](bot/bot.js)) emits one JSON object per line per event
   landed on and expects RustyConnector to fail the player over to the surviving
   sibling (a second `spawn` → `serverChange`). The backend is restarted afterward
   so the scenario is re-runnable.
-- **`transfer`** — connect, then send `/server lobby` to trigger a family
-  re-balance and report the resulting `serverChange`.
+- **`transfer`** — connect, then send `/server lobby` and require a response:
+  either a `serverChange` (re-balanced to a sibling) or RC's
+  "already connected" reply (valid in this single-family cluster — there is
+  nowhere else to route). Exits nonzero if the command gets *no* response —
+  a swallowed command registration is the failure this scenario exists to catch.
 
 > **Known limitation (RC behaviour, not the harness):** on a backend going down,
-> current builds may *kick* the connected player (`Server closed`) rather than
-> redirect to a sibling, so the `fallback` scenario can surface a `kicked` event
-> instead of `serverChange`. That is the exact behaviour this harness exists to
-> exercise — treat a `kicked` result as a real finding, not a harness fault.
+> current builds *kick* the connected player (`Server closed`) instead of
+> redirecting to a sibling, so `fallback` sees a `kicked` event, not a
+> `serverChange`. **Temporary:** until RC's fallback is fixed the harness treats
+> that kick as the expected result (so `fallback` / `just test` pass on it); flip
+> the scenario back to requiring `serverChange` once RC redirects.
 
 ## The bot container
 

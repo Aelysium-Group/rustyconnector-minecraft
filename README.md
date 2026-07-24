@@ -140,6 +140,51 @@ These features are being incrementally released as external modules you can inst
 
 - ### 🔳 Viewport Integrated Dashboard (Release Version TBD)
 ---
+# 🛠️ Building & Testing
+
+RustyConnector builds three artifacts from one Gradle (Kotlin DSL) build: the
+**Velocity** proxy plugin, the **Paper** backend plugin, and the **Fabric**
+backend mod.
+
+## Setup
+
+The build's only prerequisite is **JDK 21**. Everything runs through the Gradle
+wrapper (`./gradlew`), which pins **Gradle 9.6.0** (required by the Fabric Loom
+toolchain); Gradle uses a JDK 21 it finds on the system but won't download one.
+Get JDK 21 either way:
+
+- **With Nix** — `nix develop` (or `direnv allow`) opens a shell with JDK 21,
+  Gradle 9, Maven, and [`just`](https://just.systems), and sets `JAVA_HOME`.
+- **Without Nix** — install JDK 21 yourself. Add [`just`](https://just.systems)
+  too for the task recipes below, or call `./gradlew` directly.
+
+## Common tasks (`just`)
+
+| Recipe | What it does |
+|---|---|
+| `just build` | Build the velocity / paper / fabric jars (`./gradlew build`). |
+| `just clean` | Remove build outputs. |
+| `just test` | Build, stand up the integration cluster, run the bot scenarios. |
+| `just up` | Stand up the integration cluster (boot, wire, verify registration). |
+| `just down` | Tear the cluster down and wipe its data. |
+| `just logs` | Follow cluster logs. |
+| `just bot [scenario]` | Run a single bot scenario (default `fallback`). |
+
+`just --list` shows the full set. Build artifacts land in
+`<platform>/build/libs/rustyconnector-<platform>-<version>.jar`.
+
+## Integration test harness (Docker)
+
+`just test` / `just up` stand up a real cluster in Docker — a Velocity proxy with
+Paper and Fabric backends — and drive a [mineflayer](https://github.com/PrismarineJS/mineflayer)
+bot through it to assert connect / fallback / transfer behaviour against the
+freshly-built jars. This path needs **Docker** (with the Compose plugin); it does
+**not** need the Nix shell.
+
+See **[`test-harness/README.md`](test-harness/README.md)** for the cluster
+topology, the bot scenarios, the wiring details, and troubleshooting.
+
+---
 # 🎨 Statistics
 
 ## 🌌 Networks Served ([Click to view](https://bstats.org/plugin/velocity/RustyConnector/17972)):

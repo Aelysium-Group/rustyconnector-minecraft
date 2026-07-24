@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "rustyconnector-common",
+  "version": "0.9.2",
+  "name": "RustyConnector (common)",
+  "description": "Shared library bundled via Jar-in-Jar.",
+  "environment": "*"
+}

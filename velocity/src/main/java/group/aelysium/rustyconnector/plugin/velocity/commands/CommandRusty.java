@@ -2,18 +2,23 @@ package group.aelysium.rustyconnector.plugin.velocity.commands;
 
 import group.aelysium.rustyconnector.RC;
 import group.aelysium.rustyconnector.common.errors.Error;
+import group.aelysium.rustyconnector.common.magic_link.MagicLinkCore;
 import group.aelysium.rustyconnector.common.util.CommandClient;
 import group.aelysium.rustyconnector.proxy.family.Family;
 import group.aelysium.rustyconnector.proxy.family.Server;
 import group.aelysium.rustyconnector.proxy.player.Player;
+import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Permission;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import static net.kyori.adventure.text.Component.text;
-import static net.kyori.adventure.text.format.NamedTextColor.DARK_BLUE;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
+import static net.kyori.adventure.text.format.NamedTextColor.BLUE;
 
 @Command("rc")
 @Permission("rustyconnector.commands.rc")
@@ -64,9 +69,18 @@ public final class CommandRusty {
             RC.Error(Error.from(e).urgent(true));
         }
     }
-
-    @Command("send <playerTarget> <target> family")
-    public void mgwsedhgsmudghug(CommandClient.Console<?> client, String playerTarget, String target) {
+    @Command("send <playerTarget> <target> <flags>")
+    private void mgwsedhgsmudghug(
+        CommandClient.Console<?> client,
+        String playerTarget,
+        String target,
+        @Greedy String flags
+    ) {
+        if(flags.equals("family") || flags.equals("server")) {
+            RC.Error(Error.from("The '/rc send <playerTarget> <target> <family|server>' syntax has been replaced with a flags system. To specifically target a family or server use -f or -s respectively.").urgent(true));
+            return;
+        }
+        
         Player player = null;
         try {
             try {
@@ -82,46 +96,42 @@ public final class CommandRusty {
             client.send(text(player.username()+" isn't online.", DARK_BLUE));
             return;
         }
-
-        Player.Connectable connectable = RC.P.Family(target).orElseThrow();
-
-        try {
-            Player.Connection.Request request = connectable.connect(player);
-            Player.Connection.Result result = request.result().get(30, TimeUnit.SECONDS);
-
-            if (result.connected()) return;
-
-            client.send(result.message());
-        } catch (Exception e) {
-            RC.Error(Error.from(e).urgent(true));
-        }
-    }
-    @Command("send <playerTarget> <target> server")
-    public void zmasuiymddiumgsa(CommandClient.Console<?> client, String playerTarget, String target) {
-        Player player = null;
-        try {
+        
+        Set<MagicLinkCore.Packets.SendPlayer.Flag> flagSet = Arrays.stream(
+                flags.replaceAll("\\s*-+([a-zA-Z])\\s*", "$1").split("")
+            )
+            .map(f -> switch (f) {
+                case "f" -> MagicLinkCore.Packets.SendPlayer.Flag.FAMILY;
+                case "s" -> MagicLinkCore.Packets.SendPlayer.Flag.SERVER;
+                case "i" -> MagicLinkCore.Packets.SendPlayer.Flag.MINIMAL;
+                case "o" -> MagicLinkCore.Packets.SendPlayer.Flag.MODERATE;
+                case "a" -> MagicLinkCore.Packets.SendPlayer.Flag.AGGRESSIVE;
+                default -> null;
+            })
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+        
+        Player.Connectable connectable = null;
+        if(flagSet.contains(MagicLinkCore.Packets.SendPlayer.Flag.FAMILY)) connectable = RC.P.Family(target).orElseThrow();
+        else if(flagSet.contains(MagicLinkCore.Packets.SendPlayer.Flag.SERVER)) connectable = RC.P.Server(target).orElseThrow();
+        else {
             try {
-                player = RC.P.PlayerFromID(playerTarget).orElseThrow();
-            } catch (Exception ignore) {}
-            player = RC.P.PlayerFromUsername(playerTarget).orElseThrow();
-        } catch (Exception ignore) {}
-        if (player == null) {
-            client.send(text("No player "+playerTarget+" could be found.", DARK_BLUE));
-            return;
+                connectable = RC.P.Family(target).orElseThrow();
+            } catch(Exception ignore) {}
+            
+            if(connectable == null) try {
+                connectable = RC.P.Server(target).orElseThrow();
+            } catch (Exception ignore2) {}
         }
-        if (!player.online()) {
-            client.send(text(player.username()+" isn't online.", DARK_BLUE));
-            return;
-        }
-
-        Player.Connectable connectable =  RC.P.Server(target).orElseThrow();
-
+        
         try {
+            if(connectable == null) throw new NullPointerException("The requested server or family "+target+" could not be found.");
+            
             Player.Connection.Request request = connectable.connect(player);
             Player.Connection.Result result = request.result().get(30, TimeUnit.SECONDS);
-
+            
             if (result.connected()) return;
-
+            
             client.send(result.message());
         } catch (Exception e) {
             RC.Error(Error.from(e).urgent(true));

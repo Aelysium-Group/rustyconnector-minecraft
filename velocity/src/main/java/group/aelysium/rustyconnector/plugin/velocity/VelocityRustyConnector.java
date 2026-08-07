@@ -406,7 +406,7 @@ public class VelocityRustyConnector implements PluginContainer {
         this.server.getEventManager().register(this, new OnPlayerChangeServer());
         this.server.getEventManager().register(this, new OnPlayerChooseInitialServer());
         this.server.getEventManager().register(this, new OnPlayerDisconnect());
-        this.server.getEventManager().register(this, new OnPlayerKicked());
+        this.server.getEventManager().register(this, new OnPlayerKicked(this.server));
         this.server.getEventManager().register(this, new OnPlayerPreConnectServer(this.server));
     }
 

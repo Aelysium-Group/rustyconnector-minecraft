@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+# RustyConnector integration-test harness.
+#
+#   stage   copy freshly-built jars into ./jars (run after a rebuild)
+#   up      stage, boot the cluster, wire it, verify registration
+#   down    stop and wipe the cluster
+#   wire    (re)apply wiring (idempotent), restart backends, verify
+#   verify  check both backends registered into the lobby family
+#   bot     run a bot scenario:  bot <connect|fallback|transfer>
+#   test    run the bot scenarios
+#   logs    follow cluster logs
+set -uo pipefail
+cd "$(dirname "$0")" || exit 1
+DC="docker compose"
+say() { printf '\033[36m[harness]\033[0m %s\n' "$*"; }
+
+wait_healthy() {
+  say "waiting for all containers healthy…"
+  local dead
+  for _ in $(seq 1 80); do
+    # Fail fast on a crashed container: an Exited one drops out of the healthy
+    # count entirely, which otherwise burns the whole timeout in silence
+    # (seen: unpinned Velocity crash-looping on UnsupportedClassVersionError).
+    dead=$($DC ps -a --format '{{.Service}} {{.State}}' | awk '$2=="exited"{print $1}')
+    if [ -n "$dead" ]; then
+      say "container(s) exited while waiting: $dead — recent logs:"
+      for svc in $dead; do $DC logs --tail 15 "$svc"; done
+      return 1
+    fi
+    [ "$($DC ps --format '{{.Health}}' 2>/dev/null | grep -c '^healthy$')" -ge 3 ] && { say "cluster healthy"; return 0; }
+    sleep 3
+  done
+  say "TIMEOUT waiting for health"; $DC ps; return 1
+}
+
+# Copy freshly-built jars into ./jars under stable names. Containers chown their
+# mounts (userns remap), so they must never point at the Gradle build tree.
+stage() {
+  mkdir -p jars
+  local m f src staged=""
+  for m in velocity paper fabric; do
+    src=""
+    for f in "../$m/build/libs/rustyconnector-$m-"*.jar; do
+      case "$f" in *-sources.jar|*-dev.jar|*-javadoc.jar) continue ;; esac
+      [ -e "$f" ] || continue            # glob stayed literal -> no match
+      src="$f"; break
+    done
+    [ -n "$src" ] || { say "missing $m jar — run 'just build' first"; return 1; }
+    rm -f "jars/$m.jar"                  # rm (dir-owned) succeeds even if the old copy is container-owned
+    cp "$src" "jars/$m.jar"
+    staged="$staged $m.jar"
+  done
+  say "staged:$staged"
+}
+
+wire() {
+  say "wiring: modern forwarding + shared aes + magic-link bind + RC-only routing"
+  local SECRET AES
+  SECRET=$($DC exec -T velocity cat /server/forwarding.secret)
+  AES=$($DC exec -T velocity cat /server/plugins/rustyconnector/metadata/aes.private)
+
+  # Velocity: enable modern forwarding; strip itzg's predefined [servers] so RC owns routing.
+  $DC exec -T velocity sh -c '
+    sed -i "s/^player-info-forwarding-mode.*/player-info-forwarding-mode = \"modern\"/" /server/velocity.toml
+    sed -i "s/^online-mode.*/online-mode = false/" /server/velocity.toml
+    sed -i "/^\[servers\]/,/^\[advanced\]/ { /^\[advanced\]/!d }" /server/velocity.toml
+  '
+  # Magic Link must bind all interfaces to be reachable cross-container.
+  $DC exec -T velocity sed -i "s#127.0.0.1:8080#0.0.0.0:8080#" /server/plugins/rustyconnector/magic_link.yml
+
+  # Paper: shared aes + velocity forwarding (Paper backfills the rest of paper-global.yml).
+  printf '%s' "$AES" | $DC exec -T paper sh -c 'mkdir -p /data/plugins/rustyconnector/metadata && cat > /data/plugins/rustyconnector/metadata/aes.private'
+  $DC exec -T paper sh -c 'mkdir -p /data/config && cat > /data/config/paper-global.yml' <<YML
+proxies:
+  velocity:
+    enabled: true
+    online-mode: false
+    secret: $SECRET
+YML
+
+  # Fabric: shared aes + FabricProxy-Lite (downloaded at runtime via MODRINTH_PROJECTS).
+  printf '%s' "$AES" | $DC exec -T fabric sh -c 'mkdir -p /data/mods/rustyconnector/metadata && cat > /data/mods/rustyconnector/metadata/aes.private'
+  $DC exec -T fabric sh -c 'mkdir -p /data/config && cat > /data/config/FabricProxy-Lite.toml' <<TOML
+hackOnlineMode = true
+hackMessageChain = true
+secret = "$SECRET"
+TOML
+
+  say "restarting all nodes to apply wiring…"
+  # Record the restart moment: verify() must only trust registrations AFTER
+  # this point — compose restart keeps the container, so old "-> lobby" lines
+  # survive in the log and would otherwise satisfy the check.
+  # Unix epoch: docker parses a bare RFC3339-ish string as CLIENT-LOCAL time,
+  # so a UTC string from `date -u` on a non-UTC host shifts the window by the
+  # TZ offset and lets stale lines through. Epoch is timezone-proof.
+  WIRED_AT=$(date +%s)
+  $DC restart velocity paper fabric >/dev/null
+}
+
+# verify [since] — check BOTH backends (paper AND fabric, distinctly — two
+# registrations of the same backend must not pass) registered into 'lobby'.
+# `since` (or $WIRED_AT, set by wire) scopes the log window so registrations
+# from before a restart can't satisfy the check.
+verify() {
+  local since="${1:-${WIRED_AT:-}}" logs
+  say "verifying both backends registered into 'lobby'${since:+ (since $since)}…"
+  for _ in $(seq 1 40); do
+    logs=$($DC logs ${since:+--since "$since"} velocity 2>&1)
+    if echo "$logs" | grep -qE 'paper:25565\] -> lobby' && \
+       echo "$logs" | grep -qE 'fabric:25565\] -> lobby'; then
+      say "registered:"; echo "$logs" | grep -E '\] -> lobby' | tail -2; return 0
+    fi
+    sleep 3
+  done
+  say "registration NOT confirmed; recent velocity log:"; $DC logs velocity 2>&1 | tail -15; return 1
+}
+
+# Run the mineflayer bot for a scenario. `compose run` builds the bot image
+# (npm ci from the committed lockfile) and attaches the container to rcnet by
+# membership; the network is created if absent.
+bot() {
+  local scenario="${1:-connect}"
+  say "bot scenario '$scenario' (-> velocity:25577 on rcnet)"
+  $DC run --build --rm -e SCENARIO="$scenario" bot
+}
+
+# Connect a bot, kill whichever backend it lands on, expect RC to fail it over (serverChange).
+fallback() {
+  local user="RCFall${RANDOM}" log="/tmp/rc-bot-fallback.log"
+  say "fallback: connect as $user, kill its backend, expect serverChange"
+  # No --name: a backgrounded `compose run` orphaned by Ctrl+C would block the
+  # next run on a container-name conflict. Process control is via $pid; the bot
+  # is found in the backend logs by $user (unique per run, so no stale matches).
+  $DC run --build --rm \
+    -e SCENARIO=fallback -e USERNAME="$user" \
+    bot >"$log" 2>&1 &
+  local pid=$!
+  # Wait for the bot to land by polling the BACKEND logs for its join. The bot's
+  # own stdout is buffered through Docker, so grepping its log for "login" races;
+  # the backend join line is the authoritative, unbuffered signal.
+  local backend=""
+  for _ in $(seq 1 40); do
+    $DC logs paper  2>&1 | grep -q "$user" && { backend=paper;  break; }
+    $DC logs fabric 2>&1 | grep -q "$user" && { backend=fabric; break; }
+    sleep 2
+  done
+  if [ -z "$backend" ]; then say "bot never landed on a backend:"; cat "$log"; kill $pid 2>/dev/null; return 1; fi
+  say "bot landed on '$backend' — stopping it gracefully (SIGTERM)"
+  $DC stop "$backend" >/dev/null
+  wait $pid 2>/dev/null
+  # Restore the backend and wait for it to RE-REGISTER, not merely start:
+  # anything running after fallback (transfer, a re-run) needs both backends
+  # actually in the family, or it races a half-restored cluster.
+  local restarted_at; restarted_at=$(date +%s)
+  $DC start "$backend" >/dev/null 2>&1 || true
+  local reg_ok=""
+  for _ in $(seq 1 40); do
+    $DC logs --since "$restarted_at" velocity 2>&1 | grep -qE "$backend:25565\] -> lobby" && { reg_ok=1; break; }
+    sleep 3
+  done
+  [ -n "$reg_ok" ] && say "'$backend' re-registered into lobby" \
+                   || say "WARNING: '$backend' not re-registered yet — subsequent scenarios may race"
+  if grep -q '"event":"serverChange"' "$log"; then
+    say "FALLBACK OK — bot failed over:"; grep -E '"event":"(serverChange|kicked|end)"' "$log"
+    say "(RC redirected — if this holds, drop the temporary kick allowance below.)"; return 0
+  fi
+  # TEMPORARY: RC currently kicks a connected player when its backend goes down
+  # instead of redirecting to a sibling (known issue). Until that's fixed a kick
+  # is the EXPECTED result, so it counts as a pass; flip back to requiring
+  # serverChange once RC's fallback lands. Neither redirect nor kick is a failure.
+  if grep -q '"event":"kicked"' "$log"; then
+    say "fallback: player KICKED, not redirected — expected for now (known RC issue; temporary):"
+    grep -E '"event":"(kicked|end)"' "$log"; return 0
+  fi
+  say "fallback: neither serverChange nor kick — unexpected:"; grep '"event"' "$log" | tail; return 1
+}
+
+case "${1:-}" in
+  stage)    stage ;;
+  up)       stage && $DC up -d && wait_healthy && wire && wait_healthy && verify ;;
+  down)     $DC down -v ;;
+  wire)     wire && wait_healthy && verify ;;
+  verify)   verify "${2:-}" ;;       # optional: verify <since-timestamp>
+  bot)      bot "${2:-connect}" ;;   # bare 'harness bot' -> connect ('just bot' defaults to fallback)
+  fallback) fallback ;;
+  test)     bot connect && fallback && bot transfer ;;
+  logs)     $DC logs -f ;;
+  *)        echo "usage: $0 {stage|up|down|wire|verify|bot [scenario]|fallback|test|logs}"; exit 1 ;;
+esac

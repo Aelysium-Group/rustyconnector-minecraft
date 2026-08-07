@@ -1,8 +1,0 @@
-name: rustyconnector-paper
-version: '${version}'
-config-version: '${config_version}'
-magic-link-protocol-version: '${magic_link_protocol_version}'
-main: group.aelysium.rustyconnector.plugin.paper.PaperRustyConnector
-api-version: 1.21.1
-website: https://github.com/Aelysium-Group/rusty-connector
-authors: [ Juice ]

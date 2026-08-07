@@ -217,6 +217,16 @@ public class VelocityLang extends CommonLang {
         );
     };
 
+    @Lang("velocity-alreadyInFamily")
+    public static Component velocityAlreadyInFamily() {
+        return text("You are already connected to this server!", RED);
+    }
+
+    @Lang("velocity-noServer")
+    public static Component velocityNoServer() {
+        return text("You are not connected to any server!", RED);
+    }
+
     @Lang("velocity-serverUsage")
     public static Component velocityServer(Server server) {
         List<String> families = new ArrayList<>();

@@ -1,0 +1,9 @@
+# Runtime server data (worlds, generated RC configs, downloaded server jars)
+data/
+
+# Staged plugin/mod jars (copied from each module's build/libs by `harness stage`)
+jars/
+
+# Bot dependencies — package-lock.json is committed for reproducible `npm ci`
+# (the bot image installs from it); node_modules is build output and stays out.
+bot/node_modules/

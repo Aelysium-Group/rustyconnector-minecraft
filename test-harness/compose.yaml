@@ -1,0 +1,69 @@
+# RustyConnector integration cluster: Velocity proxy + Paper & Fabric backends.
+# Backends register into the "lobby" family over Magic Link; one shared aes.private.
+# Both backends run MC 1.21.8 so a single bot client can reach either.
+name: rc-harness
+
+services:
+  velocity:
+    image: itzg/mc-proxy
+    environment:
+      TYPE: VELOCITY
+      # Pin like the backends below: unpinned, the image pulls the latest
+      # Velocity snapshot at boot — 4.0.0-SNAPSHOT needs Java 25, the image
+      # runtime is 21, and the proxy crash-loops with UnsupportedClassVersionError.
+      VELOCITY_VERSION: "3.5.0-SNAPSHOT"
+      MEMORY: 1G
+    ports:
+      - "25565:25577"
+    volumes:
+      - ./data/velocity:/server
+      - ./jars/velocity.jar:/server/plugins/rustyconnector-velocity.jar
+    networks: [rcnet]
+    restart: "no"
+
+  paper:
+    image: itzg/minecraft-server
+    environment:
+      EULA: "true"
+      TYPE: PAPER
+      VERSION: "1.21.8"
+      ONLINE_MODE: "false"
+      MEMORY: 1G
+      RUSTYCONNECTOR_CONFIG: '{"address":"paper:25565","family":"lobby","magicLink_accessEndpoint":"http://velocity:8080"}'
+    volumes:
+      - ./data/paper:/data
+      - ./jars/paper.jar:/data/plugins/rustyconnector-paper.jar
+    networks: [rcnet]
+    restart: "no"
+
+  fabric:
+    image: itzg/minecraft-server
+    environment:
+      EULA: "true"
+      TYPE: FABRIC
+      VERSION: "1.21.8"
+      ONLINE_MODE: "false"
+      MEMORY: 1G
+      MODRINTH_PROJECTS: fabric-api,fabricproxy-lite
+      RUSTYCONNECTOR_CONFIG: '{"address":"fabric:25565","family":"lobby","magicLink_accessEndpoint":"http://velocity:8080"}'
+    volumes:
+      - ./data/fabric:/data
+      - ./jars/fabric.jar:/data/mods/rustyconnector-fabric.jar
+    networks: [rcnet]
+    restart: "no"
+
+  # Integration-test bot (mineflayer). Profile-gated so it never starts with a
+  # plain `up`; the harness runs it on demand via `docker compose run bot`, which
+  # attaches it to rcnet by membership. HOST/PORT target Velocity's in-container
+  # listener.
+  bot:
+    build: ./bot
+    profiles: [bot]
+    environment:
+      HOST: velocity
+      PORT: "25577"
+    networks: [rcnet]
+    restart: "no"
+
+networks:
+  rcnet: {}

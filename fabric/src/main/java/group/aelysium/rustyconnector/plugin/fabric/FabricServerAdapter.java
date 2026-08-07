@@ -66,7 +66,7 @@ public class FabricServerAdapter extends ServerAdapter {
             ServerPlayerEntity player2 = server.getPlayerManager().getPlayer(UUID.fromString(toPlayer));
             if(player2 == null) throw new NullPointerException("Player "+toPlayer+" could not be found.");
             player2.teleport(
-                player1.getServerWorld(),
+                player1.getWorld(),
                 player1.getX(),
                 player1.getY(),
                 player1.getZ(),
@@ -87,7 +87,7 @@ public class FabricServerAdapter extends ServerAdapter {
             if(player == null) throw new NullPointerException("Player "+from+" could not be found.");
             
             player.teleport(
-                world == null ? player.getServerWorld() : this.server.getWorld(this.server.getWorldRegistryKeys().stream().filter(w->w.getValue().getPath().equals(world)).findAny().orElse(null)),
+                world == null ? player.getWorld() : this.server.getWorld(this.server.getWorldRegistryKeys().stream().filter(w->w.getValue().getPath().equals(world)).findAny().orElse(null)),
                 x == null ? player.getX() : x,
                 y == null ? player.getY() : y,
                 z == null ? player.getZ() : z,

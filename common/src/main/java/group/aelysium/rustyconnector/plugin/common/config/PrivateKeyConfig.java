@@ -20,6 +20,9 @@ public class PrivateKeyConfig {
     private byte[] key;
 
     public AES cryptor() {
+        String privateKey = System.getenv("RUSTYCONNECTOR_PRIVATEKEY");
+        if(privateKey != null) return AES.from(Base64.getDecoder().decode(privateKey));
+
         return AES.from(Base64.getDecoder().decode(this.key));
     }
 

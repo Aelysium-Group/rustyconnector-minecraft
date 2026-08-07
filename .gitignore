@@ -1,5 +1,7 @@
 # User-specific stuff
 .*/
+# ... but .github is project infrastructure, not user-specific.
+!.github/
 
 *.iml
 *.ipr
@@ -128,3 +130,8 @@ bin/
 # Remove Ignore List
 
 !/plugin/gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# direnv (local)
+.envrc
+.direnv/

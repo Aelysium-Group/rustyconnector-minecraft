@@ -13,8 +13,11 @@ import java.nio.charset.StandardCharsets;
 public class ServerIDConfig {
     @AllContents()
     private byte[] id;
-
+    
     public String id() {
+        String envId = System.getenv("RUSTYCONNECTOR_SERVERID");
+        if (envId != null && !envId.isEmpty()) return envId;
+
         return new String(id, StandardCharsets.UTF_8);
     }
 

@@ -1,11 +1,41 @@
 package group.aelysium.rustyconnector.plugin.serverCommon;
 
+import group.aelysium.rustyconnector.RC;
+import group.aelysium.rustyconnector.common.errors.Error;
+import group.aelysium.rustyconnector.common.util.Parameter;
+import group.aelysium.rustyconnector.shaded.com.google.code.gson.gson.Gson;
+import group.aelysium.rustyconnector.shaded.com.google.code.gson.gson.JsonObject;
+import group.aelysium.rustyconnector.shaded.com.google.code.gson.gson.reflect.TypeToken;
 import group.aelysium.rustyconnector.shaded.group.aelysium.declarative_yaml.*;
 import group.aelysium.rustyconnector.shaded.group.aelysium.declarative_yaml.annotations.*;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 @Namespace("rustyconnector")
 @Config("/config.yml")
 public class DefaultConfig {
+    private static Gson gson = new Gson();
+    
+    private final Map<String, Parameter> overrides = new HashMap<>();
+    
+    public DefaultConfig() {
+        try {
+            String json = System.getenv("RUSTYCONNECTOR_CONFIG");
+            
+            if (json != null && !json.isEmpty()) {
+                JsonObject object = gson.fromJson(json, JsonObject.class);
+                object.asMap().forEach((k, v) -> {
+                    overrides.put(k, Parameter.fromJSON(v));
+                });
+            }
+        } catch (Exception e) {
+            RC.Error(Error.from(e));
+        }
+    }
+    
     @Comment({
         "#",
         "# If you need help updating your configs from an older version;",
@@ -15,7 +45,13 @@ public class DefaultConfig {
         "#"
     })
     @Node()
-    public int version = 7;
+    private Integer version = 7;
+    public int version() {
+        try {
+            return this.overrides.get("version").getAsInt();
+        } catch(Exception ignore) {}
+        return this.version;
+    }
 
     @Comment({
         "#",
@@ -29,7 +65,13 @@ public class DefaultConfig {
         "#"
     })
     @Node(1)
-    public String address = "127.0.0.1:25565";
+    private String address = "127.0.0.1:25565";
+    public String address() {
+        try {
+            return this.overrides.get("address").getAsString();
+        } catch(Exception ignore) {}
+        return this.address;
+    }
 
     @Comment({
         "#",
@@ -39,7 +81,13 @@ public class DefaultConfig {
         "#"
     })
     @Node(2)
-    public String family = "lobby";
+    private String family = "lobby";
+    public String family() {
+        try {
+            return this.overrides.get("family").getAsString();
+        } catch(Exception ignore) {}
+        return this.family;
+    }
 
     @Comment({
         "#",
@@ -50,7 +98,13 @@ public class DefaultConfig {
         "#"
     })
     @Node(3)
-    public String magicLink_accessEndpoint = "http://127.0.0.1:8080";
+    private String magicLink_accessEndpoint = "http://127.0.0.1:8080";
+    public String magicLink_accessEndpoint() {
+        try {
+            return this.overrides.get("magicLink_accessEndpoint").getAsString();
+        } catch(Exception ignore) {}
+        return this.magicLink_accessEndpoint;
+    }
 /*
     @Comment({
         "#",
@@ -82,7 +136,13 @@ public class DefaultConfig {
         "#"
     })
     @Node(4)
-    public boolean useUUID = false;
+    private boolean useUUID = false;
+    public boolean useUUID() {
+        try {
+            return this.overrides.get("useUUID").getAsBoolean();
+        } catch(Exception ignore) {}
+        return this.useUUID;
+    }
 
     @Node(5)
     @Comment({
@@ -95,7 +155,13 @@ public class DefaultConfig {
         "# https://wiki.aelysium.group/rusty-connector/docs/concepts/metadata/",
         "#"
     })
-    public String metadata = "{\\\"softCap\\\": 30, \\\"hardCap\\\": 40}";
+    private String metadata = "{\\\"softCap\\\": 30, \\\"hardCap\\\": 40}";
+    public String metadata() {
+        try {
+            return this.overrides.get("metadata").getAsString();
+        } catch(Exception ignore) {}
+        return this.metadata;
+    }
     
     @Comment({
         "#",
@@ -105,6 +171,12 @@ public class DefaultConfig {
     })
     @Node(6)
     public String moduleDirectory = "/rc-module";
+    public String moduleDirectory() {
+        try {
+            return this.overrides.get("moduleDirectory").getAsString();
+        } catch(Exception ignore) {}
+        return this.moduleDirectory;
+    }
     
     @Comment({
         "#",
@@ -116,6 +188,12 @@ public class DefaultConfig {
     })
     @Node(7)
     public String moduleConfigDirectory = "/rc-module";
+    public String moduleConfigDirectory() {
+        try {
+            return this.overrides.get("moduleConfigDirectory").getAsString();
+        } catch(Exception ignore) {}
+        return this.moduleConfigDirectory;
+    }
 
     public static DefaultConfig New() {
         return DeclarativeYAML.From(DefaultConfig.class);

@@ -99,18 +99,19 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
                     try {
                         DefaultConfig config = DefaultConfig.New();
                         
-                        if(config.family.isBlank()) throw new IllegalArgumentException("Please provide a valid family name to target.");
-                        if(config.family.length() > 16) throw new IllegalArgumentException("Family names are not allowed to be larger than 16 characters.");
+                        String family = config.family();
+                        if(family.isBlank()) throw new IllegalArgumentException("Please provide a valid family name to target.");
+                        if(family.length() > 16) throw new IllegalArgumentException("Family names are not allowed to be larger than 16 characters.");
                         
                         ServerIDConfig idConfig = ServerIDConfig.Read();
                         String id = (idConfig == null ? null : idConfig.id());
                         if(id == null) {
-                            if (config.useUUID) {
+                            if (config.useUUID()) {
                                 id = UUID.randomUUID().toString();
                             } else {
-                                int extra = 16 - config.family.length();
+                                int extra = 16 - family.length();
                                 NanoID nanoID = NanoID.randomNanoID(15 + extra); // 15 because there's a `-` separator between family name and nanoid
-                                id = config.family + "-" + nanoID;
+                                id = family + "-" + nanoID;
                             }
                             
                             ServerIDConfig.Load(id);
@@ -121,11 +122,11 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
                             new FabricServerAdapter(s, this.commandManager),
                             Path.of(DeclarativeYAML.basePath("rustyconnector")),
                             Path.of(DeclarativeYAML.basePath("rustyconnector-modules")),
-                            AddressUtil.parseAddress(config.address),
-                            config.family
+                            AddressUtil.parseAddress(config.address()),
+                            config.family()
                         );
                         
-                        JsonObject metadataJson = gson.fromJson(config.metadata, JsonObject.class);
+                        JsonObject metadataJson = gson.fromJson(config.metadata(), JsonObject.class);
                         metadataJson.entrySet().forEach(e->kernel.storeMetadata(e.getKey(), Parameter.fromJSON(e.getValue())));
                         
                         return kernel;
@@ -188,7 +189,7 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
                                             
                                             AES aes = PrivateKeyConfig.New().cryptor();
                                             return new WebSocketMagicLink(
-                                                URL.parseURL(config.magicLink_accessEndpoint),
+                                                URL.parseURL(config.magicLink_accessEndpoint()),
                                                 Packet.SourceIdentifier.server(idConfig.id()),
                                                 aes,
                                                 new PacketCache(100),

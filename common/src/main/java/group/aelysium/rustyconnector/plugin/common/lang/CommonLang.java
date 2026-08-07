@@ -6,7 +6,6 @@ import group.aelysium.rustyconnector.common.lang.Lang;
 import group.aelysium.rustyconnector.common.magic_link.packet.Packet;
 import group.aelysium.rustyconnector.common.modules.Module;
 import group.aelysium.rustyconnector.common.util.Parameter;
-import group.aelysium.rustyconnector.proxy.util.Version;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.jetbrains.annotations.NotNull;
@@ -197,10 +196,10 @@ public class CommonLang {
     }
 
     @Lang("rustyconnector-wordmark")
-    public static Component wordmark(Version version) {// font: ANSI Shadow
+    public static Component wordmark(String version) {// font: ANSI Shadow
         Component versionComponent = space();
 
-        if(version != null && !version.equals(""))
+        if(version != null && !version.isEmpty())
             versionComponent = versionComponent.append(text("Version "+version, DARK_AQUA));
 
         return RC.Lang("rustyconnector-box").generate(

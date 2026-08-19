@@ -10,6 +10,8 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.proxy.server.ServerInfo;
+
 import group.aelysium.rustyconnector.common.haze.HazeProvider;
 import group.aelysium.rustyconnector.common.util.CommandClient;
 import group.aelysium.rustyconnector.common.util.Parameter;
@@ -56,6 +58,7 @@ import org.slf4j.Logger;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -313,6 +316,13 @@ public class VelocityRustyConnector implements PluginContainer {
                                                             RC.Error(Error.from("Unable to register "+scalarFamilyConfig.id+" because LoadBalancerRegistry is null.").urgent(true));
                                                             return null;
                                                         }
+
+                                                        // Create a Velocity Virtual Server for the family
+                                                        ServerInfo familyVirtualServer = new ServerInfo(
+                                                            scalarFamilyConfig.id, 
+                                                            new InetSocketAddress("127.0.0.1", 0)
+                                                        );
+                                                        server.registerServer(familyVirtualServer);
                                                         
                                                         return new ScalarFamily(
                                                             scalarFamilyConfig.id,

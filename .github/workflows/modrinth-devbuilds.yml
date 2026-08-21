@@ -72,6 +72,6 @@ jobs:
             1.21.x
             26.x
           files: |
-            ./paper/build/libs/*
-            ./velocity/build/libs/*
-            ./fabric/build/libs/*s.SHORT_SHA }}.jar
+            paper/build/libs/*
+            velocity/build/libs/*
+            fabric/build/libs/*s.SHORT_SHA }}.jar

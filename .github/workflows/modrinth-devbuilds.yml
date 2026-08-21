@@ -21,13 +21,14 @@ jobs:
 
       - name: Get short SHA
         id: vars
-        run: echo "SHORT_SHA=$(git rev-parse --short=7 ${{ github.sha }})" >> $GITHUB_OUTPUT
+        run: |
+          echo "PLUGIN_VERSION=$(grep "^plugin_version=" gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+          echo "SHORT_SHA=$(git rev-parse --short=7 ${{ github.sha }})" >> $GITHUB_OUTPUT
 
-      #- name: Update gradle.properties with short SHA
-      #  run: |
-      #    sed -i "s/module_version.*/module_version=alpha-${{ steps.vars.outputs.SHORT_SHA }}/" gradle.properties
-      #    cat gradle.properties
-
+      - name: Save plugin version and update gradle.properties
+        id: update_version
+        run: sed -i "s/^plugin_version=.*/plugin_version=${{ steps.vars.outputs.PLUGIN_VERSION }}-${{ steps.vars.outputs.SHORT_SHA }}/" gradle.properties
+          
       - name: Install Gradle
         uses: gradle/actions/setup-gradle@v5
         with:
@@ -41,8 +42,8 @@ jobs:
         with:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: Hd02Faj9
-          name: Hd02Faj9${{ steps.vars.outputs.SHORT_SHA }}
-          version: VERSION-{{ steps.vars.outputs.SHORT_SHA }}
+          name: rustyconnector-${{ steps.vars.outputs.steps.vars.outputs.PLUGIN_VERSION }}-${{ steps.vars.outputs.SHORT_SHA }}
+          version: rustyconnector-${{ steps.vars.outputs.steps.vars.outputs.PLUGIN_VERSION }}-${{ steps.vars.outputs.SHORT_SHA }}
           changelog: |
             ## ${{ github.event.head_commit.message }}
           
@@ -54,6 +55,9 @@ jobs:
 
           loaders: |-
             velocity
+            paper
+            purpur
+            fabric
           #dependencies: |-
           #  [{
           #    "project_id": "Hd02Faj9",
@@ -67,4 +71,7 @@ jobs:
             1.20.x
             1.21.x
             26.x
-          #files: core/build/libs/rcs-core-${{ steps.vars.outputs.SHORT_SHA }}.jar
+          files: |
+            ${{ github.workspace }}/paper/build/libs/*
+            ${{ github.workspace }}/velocity/build/libs/*
+            ${{ github.workspace }}/fabric/build/libs/*s.SHORT_SHA }}.jar

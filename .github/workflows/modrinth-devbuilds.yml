@@ -25,7 +25,7 @@ jobs:
           echo "PLUGIN_VERSION=$(grep "^plugin_version=" gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
           echo "SHORT_SHA=$(git rev-parse --short=7 ${{ github.sha }})" >> $GITHUB_OUTPUT
 
-      - name: Save plugin version and update gradle.properties
+      - name: Update Gradle.properties version with git short sha
         id: update_version
         run: sed -i "s/^plugin_version=.*/plugin_version=${{ steps.vars.outputs.PLUGIN_VERSION }}-${{ steps.vars.outputs.SHORT_SHA }}/" gradle.properties
           
@@ -36,6 +36,10 @@ jobs:
 
       - name: Build with Gradle
         run: gradle build
+
+      - name: DEBUG: ls
+        run: ls paper/build/libs
+         
 
       - name: Upload to Modrinth
         uses: cloudnode-pro/modrinth-publish@v2

@@ -19,7 +19,7 @@ jobs:
           distribution: temurin
           cache: gradle
 
-            - name: Get short SHA
+      - name: Get short SHA
         id: vars
         run: |
           VERSION=$(grep "plugin_version" gradle.properties | head -n 1 | cut -d'=' -f2 | tr -d '[:space:]')

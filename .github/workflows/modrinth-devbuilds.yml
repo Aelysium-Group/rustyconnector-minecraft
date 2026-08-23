@@ -46,8 +46,8 @@ jobs:
         with:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: Hd02Faj9
-          name: rustyconnector-${{ steps.vars.outputs.steps.vars.outputs.PLUGIN_VERSION }}-${{ steps.vars.outputs.SHORT_SHA }}
-          version: rustyconnector-${{ steps.vars.outputs.steps.vars.outputs.PLUGIN_VERSION }}-${{ steps.vars.outputs.SHORT_SHA }}
+          name: rustyconnector-${{ steps.vars.outputs.PLUGIN_VERSION }}-${{ steps.vars.outputs.SHORT_SHA }}
+          version: rustyconnector-${{ steps.vars.outputs.PLUGIN_VERSION }}-${{ steps.vars.outputs.SHORT_SHA }}
           changelog: |
             ## ${{ github.event.head_commit.message }}
           
@@ -76,6 +76,6 @@ jobs:
             1.21.x
             26.x
           files: |
-            paper/build/libs/rustyconnector-paper-${{ steps.vars.outputs.steps.vars.outputs.PLUGIN_VERSION }}.jar
-            velocity/build/libs/rustyconnector-velocity-${{ steps.vars.outputs.steps.vars.outputs.PLUGIN_VERSION }}.jar
-            fabric/build/libs/rustyconnector-fabric-${{ steps.vars.outputs.steps.vars.outputs.PLUGIN_VERSION }}.jar
+            paper/build/libs/rustyconnector-paper-${{ steps.vars.outputs.PLUGIN_VERSION }}.jar
+            velocity/build/libs/rustyconnector-velocity-${{ steps.vars.outputs.PLUGIN_VERSION }}.jar
+            fabric/build/libs/rustyconnector-fabric-${{ steps.vars.outputs.PLUGIN_VERSION }}.jar

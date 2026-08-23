@@ -37,7 +37,7 @@ jobs:
       - name: Build with Gradle
         run: gradle build
 
-      - name: DEBUG: ls
+      - name: DEBUG ls
         run: ls paper/build/libs
          
 

@@ -72,8 +72,7 @@ jobs:
             1.20.x
             1.21.x
             26.x
-          files: |
-            velocity/build/libs/rustyconnector-velocity-0.9.2.jar
+          files: velocity/build/libs/rustyconnector-velocity-0.9.2.jar
             
       - name: Upload to Modrinth (Paper)
         uses: cloudnode-pro/modrinth-publish@v2
@@ -107,8 +106,7 @@ jobs:
             1.20.x
             1.21.x
             26.x
-          files: |
-            paper/build/libs/rustyconnector-paper-0.9.2.jar
+          files: paper/build/libs/rustyconnector-paper-0.9.2.jar
 
       - name: Upload to Modrinth (Fabric)
         uses: cloudnode-pro/modrinth-publish@v2
@@ -141,6 +139,4 @@ jobs:
             1.20.x
             1.21.x
             26.x
-          files: |
-            fabric/build/libs/rustyconnector-fabric-0.9.2.jar
-            
+          files: fabric/build/libs/rustyconnector-fabric-0.9.2.jar

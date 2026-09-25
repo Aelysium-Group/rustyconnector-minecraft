@@ -15,6 +15,8 @@ dependencies {
 
 tasks.named<ShadowJar>("shadowJar") {
     val prefix = "group.aelysium.rustyconnector.velocity"
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude("org/eclipse/jetty/http/compression/EncodingException.class")
     relocate("org.bstats", "$prefix.org.bstats")
     relocate("org.incendo", "$prefix.org.incendo")
 }

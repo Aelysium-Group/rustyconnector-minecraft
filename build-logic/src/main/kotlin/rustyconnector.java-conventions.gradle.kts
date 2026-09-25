@@ -19,8 +19,8 @@ repositories {
     maven("https://maven.fabricmc.net/")
     maven("https://hub.spigotmc.org/nexus/content/groups/public/")
     maven("https://repo.eclipse.org/content/groups/releases/")
-    maven("https://maven.mrnavastar.me/releases")
-    maven("https://maven.mrnavastar.me/snapshots")
+    maven("https://java.funa.dev/releases/")
+    maven("https://java.funa.dev/snapshots/")
     mavenLocal { content { includeGroup("group.aelysium.rustyconnector") } }
 }
 

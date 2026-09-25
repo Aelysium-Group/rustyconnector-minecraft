@@ -4,6 +4,7 @@ import group.aelysium.rustyconnector.RC;
 import group.aelysium.rustyconnector.common.errors.Error;
 import group.aelysium.rustyconnector.common.lang.Lang;
 import group.aelysium.rustyconnector.plugin.common.lang.CommonLang;
+import group.aelysium.rustyconnector.plugin.common.utils.MinifontConverter;
 import group.aelysium.rustyconnector.proxy.ProxyKernel;
 import group.aelysium.rustyconnector.proxy.family.Family;
 import group.aelysium.rustyconnector.proxy.family.FamilyRegistry;
@@ -230,7 +231,9 @@ public class VelocityLang extends CommonLang {
     @Lang("velocity-serverUsage")
     public static Component velocityServer(Server server) {
         List<String> families = new ArrayList<>();
-        RC.P.Families().modules().values().forEach(flux -> flux.ifPresent(f -> families.add(f.id())));
+        RC.P.Families().modules().values().forEach(flux -> flux.ifPresent(f -> families.add(
+                MinifontConverter.convert(f.id()))
+        ));
         try {
             Family family = server.family().orElseThrow();
 

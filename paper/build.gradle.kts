@@ -14,6 +14,7 @@ dependencies {
 }
 
 tasks.named<ShadowJar>("shadowJar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     relocate("org.incendo", "group.aelysium.rustyconnector.paper.org.incendo")
 }
 

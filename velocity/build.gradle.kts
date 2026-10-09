@@ -18,7 +18,7 @@ tasks.named<ShadowJar>("shadowJar") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     exclude("org/eclipse/jetty/http/compression/EncodingException.class")
     relocate("org.bstats", "$prefix.org.bstats")
-    relocate("org.incendo", "$prefix.org.incendo")
+    relocate("org.incendo", "group.aelysium.rustyconnector.velocity.org.incendo")
     relocate("dev.faststats", "$prefix.dev.faststats")
 }
 

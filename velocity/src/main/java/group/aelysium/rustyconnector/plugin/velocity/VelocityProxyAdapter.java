@@ -92,7 +92,7 @@ public class VelocityProxyAdapter extends ProxyAdapter {
     @Override
     public void messagePlayer(@NotNull String playerID, @NotNull Component component) {
         try {
-            RC.P.PlayerFromID(playerID).orElseThrow(()->new NullPointerException("No player with the uuid "+playerID+" is online.")).message(component);
+            this.velocity.getPlayer(java.util.UUID.fromString(playerID)).orElseThrow(()->new NullPointerException("No player with the uuid "+playerID+" is online.")).sendMessage(component);
         } catch (Exception e) {
             RC.Error(Error.from(e));
         }

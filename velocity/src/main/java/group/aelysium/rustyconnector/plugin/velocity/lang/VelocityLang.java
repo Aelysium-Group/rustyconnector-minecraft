@@ -230,26 +230,27 @@ public class VelocityLang extends CommonLang {
 
     @Lang("velocity-serverUsage")
     public static Component velocityServer(Server server) {
-        List<String> families = new ArrayList<>();
-        RC.P.Families().modules().values().forEach(flux -> flux.ifPresent(f -> families.add(
-                MinifontConverter.convert(f.id()))
-        ));
-        try {
-            Family family = server.family().orElseThrow();
+        Family currentFamily = server.family().orElse(null);
+        String currentId = currentFamily != null ? currentFamily.id() : null;
 
-            return join(
-                    newlines(),
-                    text("You are currently on server: "+family.id()),
-                    text("Available servers: "+families),
-                    text("Type /server <server_name> to switch to another server.")
-            );
-        } catch (Exception e) {
-            return join(
-                    newlines(),
-                    text("You are currently on an unknown server."),
-                    text("Available servers: "+String.join(", ", families)),
-                    text("Type /server <server_name> to switch to another server.")
-            );
-        }
+        List<Component> serverComponents = RC.P.Families().modules().values().stream()
+                .filter(opt -> opt.isPresent())
+                .map(opt -> opt.get())
+                .map(f -> {
+                    boolean isCurrent = currentId != null && f.id().equals(currentId);
+                    String symbol = isCurrent ? "✔ " : " ･ ";
+                    NamedTextColor color = isCurrent ? NamedTextColor.GREEN : NamedTextColor.GRAY;
+
+                    String serverName = MinifontConverter.convert(f.id());
+                    return text(symbol + serverName, color);
+                })
+                .collect(java.util.stream.Collectors.toList());
+
+        return Component.join(
+                JoinConfiguration.newlines(),
+                text("Available servers:", NamedTextColor.BLUE),
+                Component.join(JoinConfiguration.newlines(), serverComponents),
+                text("Use /sᴇʀᴠᴇʀ <ɴᴀᴍᴇ> to change your server", NamedTextColor.BLUE)
+        );
     }
 }

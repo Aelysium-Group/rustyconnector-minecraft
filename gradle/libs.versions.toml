@@ -17,7 +17,7 @@ configurate      = "4.1.2"
 snakeyaml        = "2.3"
 # Misc
 jnanoid          = "2.0.0"
-bstats           = "3.1.0"
+faststats        = "0.30.2"
 annotations      = "24.1.0"
 # Platform APIs
 velocity-api     = "3.3.0-SNAPSHOT"
@@ -51,7 +51,9 @@ configurate-yaml            = { module = "org.spongepowered:configurate-yaml", v
 snakeyaml                   = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
 
 jnanoid                     = { module = "com.aventrix.jnanoid:jnanoid", version.ref = "jnanoid" }
-bstats-velocity             = { module = "org.bstats:bstats-velocity", version.ref = "bstats" }
+faststats-velocity          = { module = "dev.faststats.metrics:velocity", version.ref = "faststats" }
+faststats-paper             = { module = "dev.faststats.metrics:bukkit", version.ref = "faststats" }
+faststats-fabric            = { module = "dev.faststats.metrics:fabric", version.ref = "faststats" }
 annotations                 = { module = "org.jetbrains:annotations", version.ref = "annotations" }
 
 velocity-api                = { module = "com.velocitypowered:velocity-api", version.ref = "velocity-api" }

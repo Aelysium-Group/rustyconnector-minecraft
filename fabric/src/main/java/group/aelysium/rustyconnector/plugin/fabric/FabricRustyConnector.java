@@ -42,6 +42,9 @@ import org.incendo.cloud.annotations.AnnotationParser;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.fabric.FabricServerCommandManager;
 
+import dev.faststats.fabric.FabricContext;
+import dev.faststats.Metrics;
+
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +53,11 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
     private final ModuleLoader loader = new ModuleLoader();
     private final Gson gson = new Gson();
     private FabricServerCommandManager<CommandClient> commandManager;
-    
+    private final FabricContext context = new FabricContext.Factory("rustyconnector-fabric", "42c321a3aeb7d9c90baaa6c0702bd5e3")
+            .metrics(Metrics.Factory::create)
+            .create();
+
+
     @Override
     public void onInitializeServer() {
         DeclarativeYAML.basePath("rustyconnector", "mods/rustyconnector");

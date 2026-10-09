@@ -47,6 +47,10 @@ dependencies {
     "include"(libs.jnanoid)
     "implementation"(libs.declarative.yaml)
     "include"(libs.declarative.yaml)
+
+    "implementation"(libs.faststats.fabric)
+    "include"(libs.faststats.fabric)
+
 }
 
 tasks.named<ProcessResources>("processResources") {

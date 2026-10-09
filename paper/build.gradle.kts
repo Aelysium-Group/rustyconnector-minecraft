@@ -7,6 +7,7 @@ plugins {
 
 dependencies {
     compileOnly(libs.paper.api)
+    implementation(libs.faststats.paper)
     implementation(libs.cloud.paper)
     implementation(libs.cloud.annotations)
     implementation(project(":serverCommon"))
@@ -16,6 +17,7 @@ dependencies {
 tasks.named<ShadowJar>("shadowJar") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     relocate("org.incendo", "group.aelysium.rustyconnector.paper.org.incendo")
+    relocate("dev.faststats", "group.aelysium.rustyconnector.paper.dev.faststats")
 }
 
 tasks.named<ProcessResources>("processResources") {

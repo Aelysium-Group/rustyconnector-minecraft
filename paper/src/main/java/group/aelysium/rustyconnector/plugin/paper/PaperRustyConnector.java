@@ -37,6 +37,8 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import dev.faststats.bukkit.BukkitContext;
+import dev.faststats.Metrics;
 import org.incendo.cloud.SenderMapper;
 import org.incendo.cloud.annotations.AnnotationParser;
 import org.incendo.cloud.execution.ExecutionCoordinator;
@@ -50,6 +52,10 @@ public final class PaperRustyConnector extends JavaPlugin {
     private static final Gson gson = new Gson();
     private final ModuleLoader loader = new ModuleLoader();
     private LegacyPaperCommandManager<CommandClient> commandManager;
+
+    private final BukkitContext context = new BukkitContext.Factory(this, "42c321a3aeb7d9c90baaa6c0702bd5e3")
+            .metrics(Metrics.Factory::create)
+            .create();
 
     public PaperRustyConnector() {}
 

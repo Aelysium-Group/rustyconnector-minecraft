@@ -12,6 +12,8 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 
+import dev.faststats.Metrics;
+import dev.faststats.velocity.VelocityContext;
 import group.aelysium.rustyconnector.common.haze.HazeProvider;
 import group.aelysium.rustyconnector.common.util.CommandClient;
 import group.aelysium.rustyconnector.common.util.Parameter;
@@ -48,7 +50,6 @@ import group.aelysium.rustyconnector.proxy.family.FamilyRegistry;
 import group.aelysium.rustyconnector.proxy.family.load_balancing.*;
 import group.aelysium.rustyconnector.proxy.util.LiquidTimestamp;
 import group.aelysium.rustyconnector.shaded.group.aelysium.ara.Flux;
-import org.bstats.velocity.Metrics;
 import org.incendo.cloud.CommandManager;
 import org.incendo.cloud.SenderMapper;
 import org.incendo.cloud.annotations.AnnotationParser;
@@ -66,7 +67,7 @@ import java.util.concurrent.TimeUnit;
 
 public class VelocityRustyConnector implements PluginContainer {
     private final ExecutorService commandExecutor = Executors.newCachedThreadPool();
-    private final Metrics.Factory metricsFactory;
+    private final VelocityContext context;
     private final PluginLogger logger;
     private final ProxyServer server;
     private final Path dataFolder;
@@ -75,13 +76,16 @@ public class VelocityRustyConnector implements PluginContainer {
     private final ModuleLoader loader = new ModuleLoader();
 
     @Inject
-    public VelocityRustyConnector(ProxyServer server, Logger logger, @DataDirectory Path dataFolder, Metrics.Factory metricsFactory) {
+    public VelocityRustyConnector(ProxyServer server, Logger logger, @DataDirectory Path dataFolder, final VelocityContext.Builder contextBuilder) {
         DeclarativeYAML.basePath("rustyconnector", "plugins/rustyconnector");
         DeclarativeYAML.basePath("rustyconnector-modules", "rc-modules");
         this.logger = new PluginLogger(logger, server);
         this.server = server;
         this.dataFolder = dataFolder;
-        this.metricsFactory = metricsFactory;
+        this.context = contextBuilder
+                .token("42c321a3aeb7d9c90baaa6c0702bd5e3")
+                .metrics(Metrics.Factory::create)
+                .create();
 
         this.commandManager = new VelocityCommandManager<>(
             this,
@@ -115,11 +119,11 @@ public class VelocityRustyConnector implements PluginContainer {
             logger.log("Offline mode detected");
 
         try {
-            metricsFactory.make(this, 17972);
-            this.logger.log("Registered to bstats!");
+            context.ready();
+            this.logger.log("Registered to faststats!");
         } catch (Exception e) {
             e.printStackTrace();
-            this.logger.log("Failed to register to bstats!");
+            this.logger.log("Failed to register to faststats!");
         }
 
         try {
@@ -424,6 +428,7 @@ public class VelocityRustyConnector implements PluginContainer {
     public void onUnload(ProxyShutdownEvent event) {
         try {
             RustyConnector.unregister();
+            context.shutdown();
             loader.close();
         } catch (Exception e) {
             e.printStackTrace();

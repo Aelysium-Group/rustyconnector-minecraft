@@ -21,6 +21,7 @@ repositories {
     maven("https://repo.eclipse.org/content/groups/releases/")
     maven("https://java.funa.dev/releases/")
     maven("https://java.funa.dev/snapshots/")
+    maven("https://repo.faststats.dev/releases/")
     mavenLocal { content { includeGroup("group.aelysium.rustyconnector") } }
 }
 

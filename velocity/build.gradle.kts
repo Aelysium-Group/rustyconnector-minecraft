@@ -6,7 +6,7 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.bstats.velocity)
+    implementation(libs.faststats.velocity)
     compileOnly(libs.velocity.api)
     implementation(libs.cloud.velocity)
     implementation(libs.cloud.annotations)
@@ -19,6 +19,7 @@ tasks.named<ShadowJar>("shadowJar") {
     exclude("org/eclipse/jetty/http/compression/EncodingException.class")
     relocate("org.bstats", "$prefix.org.bstats")
     relocate("org.incendo", "$prefix.org.incendo")
+    relocate("dev.faststats", "$prefix.dev.faststats")
 }
 
 tasks.named<ProcessResources>("processResources") {

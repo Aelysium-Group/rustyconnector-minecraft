@@ -26,18 +26,20 @@ public class OnPlayerKicked {
     @Subscribe(order = PostOrder.CUSTOM, priority = Short.MIN_VALUE)
     public EventTask onPlayerKicked(KickedFromServerEvent event) {
         return EventTask.async(() -> {
+            String kickedFrom = event.getServer().getServerInfo().getName();
+
             Player player = RC.P.Adapter().convertToRCPlayer(event.getPlayer());
-            net.kyori.adventure.text.Component reason = ((net.kyori.adventure.text.Component) event.getServerKickReason().orElse(Component.text("Kicked by server.", NamedTextColor.RED)));
+            Component reason = event.getServerKickReason()
+                    .orElse(Component.text("Kicked by server.", NamedTextColor.RED));
             ProxyAdapter.PlayerKickedResponse r = RC.P.Adapter().onKicked(player, reason);
 
-            if(r.redirect() == null) {
+            if (r.redirect() == null || r.redirect().id().equals(kickedFrom)) {
                 event.setResult(KickedFromServerEvent.DisconnectPlayer.create(r.reason()));
                 return;
             }
 
-            proxyServer.getServer(r.redirect().id()).ifPresent(registeredServer -> {
-                event.setResult(KickedFromServerEvent.RedirectPlayer.create(registeredServer, r.reason()));
-            });
+            proxyServer.getServer(r.redirect().id()).ifPresent(registeredServer ->
+                    event.setResult(KickedFromServerEvent.RedirectPlayer.create(registeredServer, r.reason())));
         });
     }
 }

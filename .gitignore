@@ -1,5 +1,5 @@
 # User-specific stuff
-.*/
+*.xml
 # ... but .github is project infrastructure, not user-specific.
 !.github/
 
@@ -135,3 +135,4 @@ bin/
 # direnv (local)
 .envrc
 .direnv/
+!.idea/icon.svg

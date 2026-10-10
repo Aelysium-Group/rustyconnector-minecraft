@@ -7,7 +7,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = "rustyconnector-minecraft"
+rootProject.name = "minecraft"
 
 include(":common")
 include(":serverCommon")

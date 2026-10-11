@@ -2,7 +2,7 @@
 
 [versions]
 # Aelysium
-core             = "0.9.3-6"
+core             = "0.9.3-8"
 declarative-yaml = "0.2.0"
 # Kyori Adventure
 adventure        = "4.24.0"

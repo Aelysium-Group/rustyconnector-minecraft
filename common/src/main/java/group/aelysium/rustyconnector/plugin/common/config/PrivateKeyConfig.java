@@ -21,20 +21,28 @@ public class PrivateKeyConfig {
 
     public AES cryptor() {
         String privateKey = System.getenv("RUSTYCONNECTOR_PRIVATEKEY");
-        if(privateKey != null) return AES.from(Base64.getDecoder().decode(privateKey));
+        if (privateKey != null && !privateKey.isBlank()) {
+            return AES.from(Base64.getDecoder().decode(privateKey.trim()));
+        }
 
         return AES.from(Base64.getDecoder().decode(this.key));
     }
 
     public static PrivateKeyConfig New() throws IOException {
-        // This logic only cares about generating the config if it doesn't exist.
+        String envKey = System.getenv("RUSTYCONNECTOR_PRIVATEKEY");
+        if (envKey != null && !envKey.isBlank()) {
+            PrivateKeyConfig config = new PrivateKeyConfig();
+            config.key = envKey.trim().getBytes(StandardCharsets.UTF_8);
+            return config;
+        }
+
         File file = new File(DeclarativeYAML.basePath("rustyconnector") + "/metadata/aes.private");
         try {
             if (!file.exists()) {
                 File parent = file.getParentFile();
                 if (!parent.exists()) parent.mkdirs();
 
-                try(FileWriter writer = new FileWriter(file)) {
+                try (FileWriter writer = new FileWriter(file)) {
                     writer.write(new String(Base64.getEncoder().encode(AES.createKey()), StandardCharsets.UTF_8));
                 }
             }
@@ -43,7 +51,15 @@ public class PrivateKeyConfig {
         }
         return DeclarativeYAML.From(PrivateKeyConfig.class);
     }
+
     public static Optional<PrivateKeyConfig> Load() throws IOException {
+        String envKey = System.getenv("RUSTYCONNECTOR_PRIVATEKEY");
+        if (envKey != null && !envKey.isBlank()) {
+            PrivateKeyConfig config = new PrivateKeyConfig();
+            config.key = envKey.trim().getBytes(StandardCharsets.UTF_8);
+            return Optional.of(config);
+        }
+
         File file = new File(DeclarativeYAML.basePath("rustyconnector") + "/metadata/aes.private");
         try {
             if (!file.exists()) {

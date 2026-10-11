@@ -38,12 +38,16 @@ public class OnFamilyLifecycle {
         });
         flux.onClose(()->{
             if(info.get() == null) return;
-            this.proxyServer.unregisterServer(info.get());
+            try {
+                this.proxyServer.unregisterServer(info.get());
+            } catch (Exception ignore) {}
         });
     }
 
     @EventListener
     public void handle(FamilyUnregisterEvent event) {
-        this.proxyServer.unregisterServer(new ServerInfo(event.family.id(), dummyAddress));
+        try {
+            this.proxyServer.unregisterServer(new ServerInfo(event.family.id(), dummyAddress));
+        } catch (Exception ignore) {}
     }
 }

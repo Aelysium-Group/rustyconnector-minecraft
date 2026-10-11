@@ -32,12 +32,12 @@ public class VelocityProxyAdapter extends ProxyAdapter {
         this.logger = logger;
         this.commandManager = commandManager;
     }
-    
+
     @Override
     public @NotNull Set<Player> onlinePlayers() {
         return this.velocity.getAllPlayers().stream().map(p -> new Player(p.getUniqueId().toString(), p.getUsername())).collect(Collectors.toSet());
     }
-    
+
     @Override
     public @Nullable Object convertToObject(@NotNull Player player) {
         return this.velocity.getPlayer(UUID.fromString(player.id())).orElse(null);
@@ -60,15 +60,28 @@ public class VelocityProxyAdapter extends ProxyAdapter {
         ServerInfo info = new ServerInfo(server.id(), server.address());
 
         try {
-            RegisteredServer registeredServer = this.velocity.registerServer(info);
-            ServerPing ping = registeredServer.ping().get(10, TimeUnit.SECONDS);
+            this.velocity.getServer(server.id()).ifPresent(existing -> {
+                if (!existing.getServerInfo().equals(info)) {
+                    try {
+                        this.velocity.unregisterServer(existing.getServerInfo());
+                    } catch (Exception ignore) {}
+                }
+            });
 
+            RegisteredServer registeredServer = this.velocity.registerServer(info);
             server.storeMetadata("velocity_RegisteredServer", registeredServer);
+
+            registeredServer.ping().whenComplete((ping, throwable) -> {
+                if (throwable != null) {
+                    RC.Error(Error.from(throwable).whileAttempting("To ping registered server: " + server.id() + " " + server.address()));
+                }
+            });
+
             return true;
         } catch (Exception e) {
-            RC.Error(Error.from(e).whileAttempting("To register the server: "+server.id()+" "+server.address()));
+            RC.Error(Error.from(e).whileAttempting("To register the server: " + server.id() + " " + server.address()));
             try {
-                this.velocity.unregisterServer(info);
+                this.unregisterServer(server);
             } catch (Exception ignore2) {}
             return false;
         }
@@ -76,7 +89,11 @@ public class VelocityProxyAdapter extends ProxyAdapter {
 
     @Override
     public void unregisterServer(@NotNull Server server) {
-        this.velocity.unregisterServer(new ServerInfo(server.id(), server.address()));
+        try {
+            this.velocity.getServer(server.id()).ifPresent(registeredServer -> {
+                this.velocity.unregisterServer(registeredServer.getServerInfo());
+            });
+        } catch (Exception ignore) {}
     }
 
     @Override
@@ -97,12 +114,12 @@ public class VelocityProxyAdapter extends ProxyAdapter {
             RC.Error(Error.from(e));
         }
     }
-    
+
     @Override
     public CommandManager<CommandClient> commandManager() {
         return this.commandManager;
     }
-    
+
     @Override
     public Optional<Server> fetchServer(@NotNull Player player) {
         com.velocitypowered.api.proxy.Player velocityPlayer = null;

@@ -65,6 +65,7 @@ public final class PaperRustyConnector extends JavaPlugin {
         DeclarativeYAML.basePath("rustyconnector-modules", "rc-modules");
         ConsoleCommandSender console = this.getServer().getConsoleSender();
         console.sendMessage("Initializing RustyConnector...");
+        this.context.ready();
 
         try {
             if(PrivateKeyConfig.Load().isEmpty()) {
@@ -88,7 +89,7 @@ public final class PaperRustyConnector extends JavaPlugin {
                 GitOpsConfig config = GitOpsConfig.New();
                 if(config != null) DeclarativeYAML.registerRepository("rustyconnector", config.config());
             }
-            
+
             this.commandManager = new LegacyPaperCommandManager<>(
                 this,
                 ExecutionCoordinator.asyncCoordinator(),
@@ -101,15 +102,15 @@ public final class PaperRustyConnector extends JavaPlugin {
                     CommandClient::toSender
                 )
             );
-            
+
             RustyConnector.registerAndIgnite(Flux.using(()->{
                 try {
                     DefaultConfig config = DefaultConfig.New();
-                    
+
                     String family = config.family();
                     if(family.isBlank()) throw new IllegalArgumentException("Please provide a valid family name to target.");
                     if(family.length() > 16) throw new IllegalArgumentException("Family names are not allowed to be larger than 16 characters.");
-                    
+
                     ServerIDConfig idConfig = ServerIDConfig.Read();
                     String id = (idConfig == null ? null : idConfig.id());
                     if(id == null) {
@@ -120,10 +121,10 @@ public final class PaperRustyConnector extends JavaPlugin {
                             NanoID nanoID = NanoID.randomNanoID(15 + extra); // 15 because there's a `-` separator between family name and nanoid
                             id = family + "-" + nanoID;
                         }
-                        
+
                         ServerIDConfig.Load(id);
                     }
-                    
+
                     ServerKernel kernel = new ServerKernel(
                         id,
                         new PaperServerAdapter(PaperRustyConnector.this.getServer(), PaperRustyConnector.this.commandManager),
@@ -132,20 +133,20 @@ public final class PaperRustyConnector extends JavaPlugin {
                         AddressUtil.parseAddress(config.address()),
                         family
                     );
-                    
+
                     JsonObject metadataJson = gson.fromJson(config.metadata(), JsonObject.class);
                     metadataJson.entrySet().forEach(e->kernel.storeMetadata(e.getKey(), Parameter.fromJSON(e.getValue())));
-                    
+
                     return kernel;
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             }));
-            
+
             RustyConnector.Kernel(flux->{
                 flux.metadata("name", "RCKernel");
                 flux.metadata("description", "The root kernel for RustyConnector where all additional modules build off of.");
-                
+
                 flux.onStart(kernel -> {
                     loader.queue(new ModuleLoader.ModuleRegistrar("LangLibrary", k->{
                         try {
@@ -193,7 +194,7 @@ public final class PaperRustyConnector extends JavaPlugin {
                                     try {
                                         DefaultConfig config = DefaultConfig.New();
                                         ServerIDConfig idConfig = ServerIDConfig.Read();
-                                        
+
                                         AES aes = PrivateKeyConfig.New().cryptor();
                                         return new WebSocketMagicLink(
                                             URL.parseURL(config.magicLink_accessEndpoint()),
@@ -224,9 +225,9 @@ public final class PaperRustyConnector extends JavaPlugin {
                             RC.Error(Error.from(e));
                         }
                     }, List.of("EventManager"), List.of()));
-                    
+
                     loader.queueFromFolder("rc-modules");
-                    
+
                     loader.resolveAndRegister(kernel);
                 });
             });
@@ -247,6 +248,7 @@ public final class PaperRustyConnector extends JavaPlugin {
     public void onDisable() {
         try {
             RustyConnector.unregister();
+            context.shutdown();
         } catch (Exception e) {
             e.printStackTrace();
         }

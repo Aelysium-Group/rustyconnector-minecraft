@@ -74,14 +74,15 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
                         CommandClient::toSender
                 )
         );
-        
+
         AnnotationParser<CommandClient> annotationParser = new AnnotationParser<>(this.commandManager, CommandClient.class);
         annotationParser.parse(new CommonCommands());
         annotationParser.parse(new CommandRusty());
 
         ServerLifecycleEvents.SERVER_STARTED.register(s -> {
             s.sendMessage(Text.of("Initializing RustyConnector..."));
-            
+            this.context.ready();
+
             ServerAdapter adapter = new FabricServerAdapter(s, commandManager);
 
             try {
@@ -101,15 +102,15 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
                     ));
                     return;
                 }
-                
+
                 RustyConnector.registerAndIgnite(Flux.using(()->{
                     try {
                         DefaultConfig config = DefaultConfig.New();
-                        
+
                         String family = config.family();
                         if(family.isBlank()) throw new IllegalArgumentException("Please provide a valid family name to target.");
                         if(family.length() > 16) throw new IllegalArgumentException("Family names are not allowed to be larger than 16 characters.");
-                        
+
                         ServerIDConfig idConfig = ServerIDConfig.Read();
                         String id = (idConfig == null ? null : idConfig.id());
                         if(id == null) {
@@ -120,10 +121,10 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
                                 NanoID nanoID = NanoID.randomNanoID(15 + extra); // 15 because there's a `-` separator between family name and nanoid
                                 id = family + "-" + nanoID;
                             }
-                            
+
                             ServerIDConfig.Load(id);
                         }
-                        
+
                         ServerKernel kernel = new ServerKernel(
                             id,
                             new FabricServerAdapter(s, this.commandManager),
@@ -132,20 +133,20 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
                             AddressUtil.parseAddress(config.address()),
                             config.family()
                         );
-                        
+
                         JsonObject metadataJson = gson.fromJson(config.metadata(), JsonObject.class);
                         metadataJson.entrySet().forEach(e->kernel.storeMetadata(e.getKey(), Parameter.fromJSON(e.getValue())));
-                        
+
                         return kernel;
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 }));
-                
+
                 RustyConnector.Kernel(flux->{
                     flux.metadata("name", "RCKernel");
                     flux.metadata("description", "The root kernel for RustyConnector where all additional modules build off of.");
-                    
+
                     flux.onStart(kernel -> {
                         loader.queue(new ModuleLoader.ModuleRegistrar("LangLibrary", k->{
                             try {
@@ -193,7 +194,7 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
                                         try {
                                             DefaultConfig config = DefaultConfig.New();
                                             ServerIDConfig idConfig = ServerIDConfig.Read();
-                                            
+
                                             AES aes = PrivateKeyConfig.New().cryptor();
                                             return new WebSocketMagicLink(
                                                 URL.parseURL(config.magicLink_accessEndpoint()),
@@ -224,9 +225,9 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
                                 RC.Error(Error.from(e));
                             }
                         }, List.of("EventManager"), List.of()));
-                        
+
                         loader.queueFromFolder("rc-modules");
-                        
+
                         loader.resolveAndRegister(kernel);
                     });
                 });
@@ -239,6 +240,7 @@ public class FabricRustyConnector implements DedicatedServerModInitializer {
         ServerLifecycleEvents.SERVER_STOPPING.register(s -> {
             try {
                 RustyConnector.unregister();
+                context.shutdown();
             } catch (Exception e) {
                 e.printStackTrace();
             }
